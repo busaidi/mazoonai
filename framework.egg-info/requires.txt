@@ -1,0 +1,4 @@
+Werkzeug
+Jinja2
+SQLAlchemy
+itsdangerous
