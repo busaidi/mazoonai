@@ -1,53 +1,46 @@
-import unittest
+import json
+import os
 
-from werkzeug.test import Client
-from werkzeug.wrappers import Response
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'mazoonai_project.settings')
 
-from framework import App
-from examples.example_app.views import ExampleController
-
-
-class StubChatService:
-    model_name = "Qwen/Qwen2.5-1.5B-Instruct"
-
-    def chat(self, message, history=None):
-        return f"echo:{message}"
+import django
+from django.test import Client, TestCase
+from unittest.mock import patch
 
 
-class AppTests(unittest.TestCase):
+django.setup()
+
+
+class AppTests(TestCase):
     def setUp(self):
-        self.app = App(template_folder="examples/example_app/templates")
-        self.controller = ExampleController(self.app, chat_service=StubChatService())
+        self.client = Client()
 
-        self.app.add_route("/", self.controller.index, methods=["GET"])
-        self.app.add_route("/api", self.controller.health, methods=["GET"])
-        self.app.add_route("/chat", self.controller.chat, methods=["POST"])
-
-        self.client = Client(self.app, Response)
-
-    def test_html_route(self):
-        response = self.client.get("/")
+    def test_index_route(self):
+        response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        self.assertIn("MazoonAI Framework", response.get_data(as_text=True))
+        self.assertContains(response, 'MazoonAI Django App')
 
-    def test_json_route(self):
-        response = self.client.get("/api")
+    def test_health_route(self):
+        response = self.client.get('/health')
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json["status"], "ok")
+        self.assertEqual(response.json()['framework'], 'Django')
 
-    def test_chat_route(self):
-        response = self.client.post("/chat", json={"message": "hello", "history": []})
+    @patch('chatapp.views.chat_service.chat', return_value='echo:hello')
+    def test_chat_route(self, _mock_chat):
+        response = self.client.post(
+            '/chat',
+            data=json.dumps({'message': 'hello', 'history': []}),
+            content_type='application/json',
+        )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json["reply"], "echo:hello")
+        self.assertEqual(response.json()['reply'], 'echo:hello')
 
     def test_chat_route_requires_message(self):
-        response = self.client.post("/chat", json={})
+        response = self.client.post(
+            '/chat', data=json.dumps({}), content_type='application/json'
+        )
         self.assertEqual(response.status_code, 400)
 
-    def test_not_found(self):
-        response = self.client.get("/missing")
-        self.assertEqual(response.status_code, 404)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    def test_method_not_allowed(self):
+        response = self.client.get('/chat')
+        self.assertEqual(response.status_code, 405)

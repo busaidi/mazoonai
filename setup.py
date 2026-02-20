@@ -1,14 +1,11 @@
 from setuptools import setup, find_packages
 
 setup(
-    name='framework',
-    version='0.2',
+    name='mazoonai-django',
+    version='1.0.0',
     packages=find_packages(),
     install_requires=[
-        'Werkzeug',
-        'Jinja2',
-        'SQLAlchemy',
-        'itsdangerous',
+        'Django>=5.0,<6.0',
         'transformers',
         'torch',
     ],

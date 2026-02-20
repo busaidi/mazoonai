@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ message }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        .chat-box { border: 1px solid #ddd; border-radius: 8px; padding: 1rem; min-height: 320px; margin-bottom: 1rem; background: #fafafa; }
+        .msg { margin: 0.5rem 0; padding: 0.6rem; border-radius: 6px; }
+        .user { background: #e6f4ff; }
+        .assistant { background: #f0f7e8; }
+        .row { display: flex; gap: 0.5rem; }
+        input { flex: 1; padding: 0.7rem; }
+        button { padding: 0.7rem 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>{{ message }}</h1>
+    <p><small>Framework: Django | Model: {{ model }}</small></p>
+
+    <div id="chat" class="chat-box"></div>
+
+    <div class="row">
+        <input id="prompt" placeholder="اكتب سؤالك هنا..." />
+        <button id="send">Send</button>
+    </div>
+
+    <script>
+        const chat = document.getElementById('chat');
+        const promptInput = document.getElementById('prompt');
+        const sendBtn = document.getElementById('send');
+        const history = [];
+
+        function addMsg(role, content) {
+            const el = document.createElement('div');
+            el.className = `msg ${role}`;
+            el.textContent = (role === 'user' ? 'You: ' : 'Qwen: ') + content;
+            chat.appendChild(el);
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        async function sendMessage() {
+            const message = promptInput.value.trim();
+            if (!message) return;
+
+            addMsg('user', message);
+            history.push({ role: 'user', content: message });
+            promptInput.value = '';
+
+            const response = await fetch('/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message, history })
+            });
+
+            const data = await response.json();
+            if (!response.ok) {
+                addMsg('assistant', data.error || 'Error');
+                return;
+            }
+
+            addMsg('assistant', data.reply);
+            history.push({ role: 'assistant', content: data.reply });
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        promptInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
